@@ -1,0 +1,9 @@
+climate:
+  - platform: melcloud
+    email: MYEMAIL@gmail.com
+    password: MYPASSWORD
+  
+#logger:
+#  default: debug
+#  logs:
+#    homeassistant.components.climate.melcloud: debug
