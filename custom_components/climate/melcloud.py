@@ -98,7 +98,7 @@ class Mode:
 	Cool = 3
 	Fan = 7
 	Auto = 8
-	
+
 # ---------------------------------------------------------------
 
 class MelCloudAuthentication:
@@ -231,7 +231,13 @@ class MelCloudDevice:
 			return 0
 				
 		return self._json["RoomTemperature"]
-			
+	
+	def getFanSpeedMax(self):
+		if not self._is_info_valid():
+			return 0
+				
+		return self._json["NumberOfFanSpeeds"]
+	
 	def getFanSpeed(self): #0 Auto, 1 to NumberOfFanSpeeds
 		if not self._is_info_valid():
 			return 0
@@ -341,7 +347,11 @@ class MelCloudClimate(ClimateDevice):
 
 	def __init__(self, device):
 		self._device = device
-		self._fan_list = ['Auto', 'Min', 'Normal', 'Max']
+		
+		self._fan_list = ['Speed Auto', 'Speed 1 (Min)']
+		for i in range(2, self._device.getFanSpeedMax()):
+			self._fan_list.append('Speed ' + str(i))
+		self._fan_list.append('Speed ' + str(self._device.getFanSpeedMax()) + " (Max)")
 		
 	@property
 	def supported_features(self):
@@ -394,6 +404,9 @@ class MelCloudClimate(ClimateDevice):
 
 	@property
 	def current_fan_mode(self):
+		if self._device.getFanSpeed() >= len(self._fan_list):
+			return self._fan_list[0]
+			
 		return self._fan_list[self._device.getFanSpeed()]
 		
 	@property
