@@ -94,6 +94,7 @@ class Language:
 
 class Mode:
 	Heat = 1
+	Dry = 2
 	Cool = 3
 	Fan = 7
 	Auto = 8
@@ -148,6 +149,7 @@ class MelCloudDevice:
 			
 	def __str__(self):
 		return str(self._json)
+		#return "Name: " + self._friendlyname + " ID: " + str(self._deviceid) + " BuildingID: " + str(self._buildingid)
 		#return "Temp: " + str(self.getTemperature()) + ", RoomTemp: " + str(self.getRoomTemperature()) + ", FanSpeed: " + str(self.getFanSpeed()) + ", Mode: " + str(self.getMode()) + ", PowerOn: " + str(self.isPowerOn()) + ", Online: " + str(self.isOnline())
 
 	def _refresh_device_info(self, recursive = 0):
@@ -308,9 +310,15 @@ class MelCloud:
 		req = requests.get("https://app.melcloud.com/Mitsubishi.Wifi.Client/User/ListDevices", headers = {'X-MitsContextKey': self._authentication.getContextKey()})
 		if req.status_code == 200:
 			reply = req.json()
+			_LOGGER.debug(reply)
 			for entry in reply:
 				for device in entry["Structure"]["Devices"]:
 					devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
+					
+				for areas in entry["Structure"]["Areas"]:
+					for device in areas["Devices"]:
+						devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
+						
 		elif req.status_code == 401:
 			_LOGGER.error("Get device list error 401 (Try to re-login...)")
 			if self._authentication.login():
@@ -327,6 +335,7 @@ OPERATION_COOL_STR = 'Cool'
 OPERATION_FAN_STR = 'Fan'
 OPERATION_AUTO_STR = 'Auto'
 OPERATION_OFF_STR = 'Off'
+OPERATION_DRY_STR = 'Dry'
 
 class MelCloudClimate(ClimateDevice):
 
@@ -366,6 +375,8 @@ class MelCloudClimate(ClimateDevice):
 			return OPERATION_HEAT_STR
 		elif self._device.getMode() == Mode.Cool:
 			return OPERATION_COOL_STR
+		elif self._device.getMode() == Mode.Dry:
+			return OPERATION_DRY_STR
 		elif self._device.getMode() == Mode.Fan:
 			return OPERATION_FAN_STR
 		elif self._device.getMode() == Mode.Auto:
@@ -375,7 +386,7 @@ class MelCloudClimate(ClimateDevice):
 
 	@property
 	def operation_list(self):
-		return [OPERATION_HEAT_STR, OPERATION_COOL_STR, OPERATION_FAN_STR, OPERATION_AUTO_STR, OPERATION_OFF_STR]
+		return [OPERATION_HEAT_STR, OPERATION_COOL_STR, OPERATION_DRY_STR, OPERATION_FAN_STR, OPERATION_AUTO_STR, OPERATION_OFF_STR]
 
 	@property
 	def is_on(self):
@@ -414,6 +425,8 @@ class MelCloudClimate(ClimateDevice):
 				self._device.setMode(Mode.Heat)
 			elif operation_mode == OPERATION_COOL_STR:
 				self._device.setMode(Mode.Cool)
+			elif operation_mode == OPERATION_DRY_STR:
+				self._device.setMode(Mode.Dry)
 			elif operation_mode == OPERATION_FAN_STR:
 				self._device.setMode(Mode.Fan)
 			elif operation_mode == OPERATION_AUTO_STR:
