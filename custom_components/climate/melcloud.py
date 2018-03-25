@@ -318,13 +318,25 @@ class MelCloud:
 			reply = req.json()
 			_LOGGER.debug(reply)
 			for entry in reply:
+			
+				#Flat devices
 				for device in entry["Structure"]["Devices"]:
 					devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
-					
+				
+				#Areas devices
 				for areas in entry["Structure"]["Areas"]:
 					for device in areas["Devices"]:
 						devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
-						
+				
+				#Floor devices
+				for floor in entry["Structure"]["Floors"]:
+					for device in floor["Devices"]:
+						devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
+					
+					for areas in floor["Areas"]:
+						for device in areas["Devices"]:
+							devices.append( MelCloudDevice(device["DeviceID"], device["BuildingID"], device["DeviceName"], self._authentication) )
+					
 		elif req.status_code == 401:
 			_LOGGER.error("Get device list error 401 (Try to re-login...)")
 			if self._authentication.login():
