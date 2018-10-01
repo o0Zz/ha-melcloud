@@ -65,7 +65,7 @@ import requests, sys, os, logging, time
 _LOGGER = logging.getLogger(__name__)
 
 try:
-	from homeassistant.components.climate import (ClimateDevice, SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF)
+	from homeassistant.components.climate import (ClimateDevice, SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF, SUPPORT_SWING_MODE)
 	from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 	from homeassistant.helpers.discovery import load_platform
 except:
@@ -243,6 +243,18 @@ class MelCloudDevice:
 			return 0
 				
 		return self._json["SetFanSpeed"]
+	
+	def getVerticalSwingMode(self): #0 Auto, 1 to NumberOfVane, +1 Swing
+		if not self._is_info_valid():
+			return 0
+				
+		return self._json["VaneVertical"]
+		
+	def getHorizontalSwingMode(self): #0 Auto, 1 to NumberOfVane, +1 Swing
+		if not self._is_info_valid():
+			return 0
+				
+		return self._json["VaneHorizontal"]
 		
 	def getMode(self):
 		if not self._is_info_valid():
@@ -261,6 +273,23 @@ class MelCloudDevice:
 			return False
 			
 		return not self._json["Offline"]	
+
+	def setVerticalSwingMode(self, swingMode):
+		if not self._is_info_valid():
+			_LOGGER.error("Unable to set swing mode: " + str(swingMode))
+			return False
+			
+		self._json["VaneVertical"] = swingMode
+		return True
+
+	def setHorizontalSwingMode(self, swingMode):
+		if not self._is_info_valid():
+			_LOGGER.error("Unable to set swing mode: " + str(swingMode))
+			return False
+			
+		self._json["VaneHorizontal"] = swingMode
+		return True
+
 		
 	def setTemperature(self, temperature):
 		if not self._is_info_valid():
@@ -316,6 +345,7 @@ class MelCloud:
 		req = requests.get("https://app.melcloud.com/Mitsubishi.Wifi.Client/User/ListDevices", headers = {'X-MitsContextKey': self._authentication.getContextKey()})
 		if req.status_code == 200:
 			reply = req.json()
+			
 			_LOGGER.debug(reply)
 			for entry in reply:
 			
@@ -365,9 +395,11 @@ class MelCloudClimate(ClimateDevice):
 			self._fan_list.append('Speed ' + str(i))
 		self._fan_list.append('Speed ' + str(self._device.getFanSpeedMax()) + " (Max)")
 		
+		self._swing_list = ['Auto', '1', '2', '3', '4', '5', '6', 'Swing']
+		
 	@property
 	def supported_features(self):
-		return (SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_OPERATION_MODE | SUPPORT_ON_OFF)
+		return (SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_OPERATION_MODE | SUPPORT_ON_OFF | SUPPORT_SWING_MODE)
 
 	@property
 	def should_poll(self):
@@ -425,6 +457,26 @@ class MelCloudClimate(ClimateDevice):
 	def fan_list(self):
 		return self._fan_list
 
+	@property
+	def current_swing_mode(self):
+		if self._device.getVerticalSwingMode() >= len(self._swing_list):
+			return self._swing_list[0]
+			
+		return self._swing_list[self._device.getVerticalSwingMode()]
+
+	def set_swing_mode(self, swing_mode):
+		for i in range(0, len(self._swing_list)):
+			if swing_mode == self._swing_list[i]:
+				self._device.setVerticalSwingMode(i)
+				self._device.apply()
+				break
+				
+		self.schedule_update_ha_state()
+
+	@property
+	def swing_list(self):
+		return self._swing_list
+		
 	def set_temperature(self, **kwargs):
 		if kwargs.get(ATTR_TEMPERATURE) is not None:
 			self._device.setTemperature(kwargs.get(ATTR_TEMPERATURE))
