@@ -192,13 +192,14 @@ class MelCloudDevice:
 			return False
 
 		#EffectiveFlags:
-		#Power: 		0x01
-		#OperationMode: 0x02
-		#Temperature: 	0x04
-		#FanSpeed: 		0x08
-		
+		#Power: 		 0x01
+		#OperationMode:  0x02
+		#Temperature: 	 0x04
+		#FanSpeed: 		 0x08
+		#VaneVertical:   0x10
+		#VaneHorizontal: 0x100
 		#Signal melcloud we want to change everything (Even if it't not true, by this way we make sure the configuration is complete)
-		self._json["EffectiveFlags"] = 0x0F
+		self._json["EffectiveFlags"] = 0x1F
 		self._json["HasPendingCommand"] = True
 		
 		req = requests.post("https://app.melcloud.com/Mitsubishi.Wifi.Client/Device/SetAta", headers = {'X-MitsContextKey': self._authentication.getContextKey()}, data = self._json)
@@ -395,7 +396,8 @@ class MelCloudClimate(ClimateDevice):
 			self._fan_list.append('Speed ' + str(i))
 		self._fan_list.append('Speed ' + str(self._device.getFanSpeedMax()) + " (Max)")
 		
-		self._swing_list = ['Auto', '1', '2', '3', '4', '5', '6', 'Swing']
+		self._swing_list = ['Auto', '1', '2', '3', '4', '5', 'Swing']
+		self._swing_id = [0, 1, 2, 3, 4, 5, 7]
 		
 	@property
 	def supported_features(self):
@@ -459,15 +461,16 @@ class MelCloudClimate(ClimateDevice):
 
 	@property
 	def current_swing_mode(self):
-		if self._device.getVerticalSwingMode() >= len(self._swing_list):
-			return self._swing_list[0]
-			
-		return self._swing_list[self._device.getVerticalSwingMode()]
+		for i in range(0, len(self._swing_id)):
+			if self._device.getVerticalSwingMode() == self._swing_id[i]:
+				return self._swing_list[i]
+				
+		return self._swing_list[0] #Auto
 
 	def set_swing_mode(self, swing_mode):
 		for i in range(0, len(self._swing_list)):
 			if swing_mode == self._swing_list[i]:
-				self._device.setVerticalSwingMode(i)
+				self._device.setVerticalSwingMode(self._swing_id[i])
 				self._device.apply()
 				break
 				
