@@ -145,6 +145,9 @@ class MelCloudDevice:
 		self._authentication = authentication
 		self._info_lease_seconds = 60 #Data stay valid during 60s, after that we refresh it
 		self._json = None
+		self._temp_list = []
+		self._temp_iteration = 0
+		
 		self._refresh_device_info()
 			
 	def __str__(self):
@@ -163,6 +166,20 @@ class MelCloudDevice:
 		
 		if req.status_code == 200:
 			self._json = req.json()
+			
+			#Update the temp list
+			if len(self._temp_list) >= 9:
+				
+				if self._temp_iteration == 9:
+					self._temp_iteration = 0
+				
+				self._temp_list[self._temp_iteration] = self._json["RoomTemperature"]
+				self._temp_iteration += 1
+			else:
+				self._temp_list.append(self._json["RoomTemperature"])
+				self._temp_iteration += 1
+			
+			
 			return True
 		elif req.status_code == 401:
 			_LOGGER.error("Device information error 401 (Try to re-login...)")
@@ -230,8 +247,11 @@ class MelCloudDevice:
 	def getRoomTemperature(self):
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["RoomTemperature"]
+					
+		#return self._json["RoomTemperature"]
+		
+		# return temp average with 1 decimal
+		return round((sum(self._temp_list) / len(self._temp_list)),1)
 	
 	def getFanSpeedMax(self):
 		if not self._is_info_valid():
