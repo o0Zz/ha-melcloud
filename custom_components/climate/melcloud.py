@@ -65,7 +65,8 @@ import requests, sys, os, logging, time
 _LOGGER = logging.getLogger(__name__)
 
 try:
-	from homeassistant.components.climate import (ClimateDevice, SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF, SUPPORT_SWING_MODE)
+	from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE, SUPPORT_FAN_MODE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF, SUPPORT_SWING_MODE)
+	from homeassistant.components.climate import ClimateDevice
 	from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 	from homeassistant.helpers.discovery import load_platform
 except:
