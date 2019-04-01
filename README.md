@@ -4,8 +4,8 @@ Add to home assistant support for mitsubishi air conditioner (MELCloud)
 
 ## Installing
 
-- Create a folder in your home assistant <config_dir>/custom_components/climate/
-- Copy melcloud.py in <config_dir>/custom_components/climate/melcloud.py
+- Create a folder in your home assistant <config_dir>/custom_components/melcloud/
+- Copy melcloud.py in <config_dir>/custom_components/melcloud/climate.py
 
 
 Edit configuration.yaml and add below lines:

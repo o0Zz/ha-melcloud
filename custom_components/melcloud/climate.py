@@ -11,7 +11,7 @@
 		HA climate example: https://github.com/home-assistant/home-assistant/blob/dev/homeassistant/components/climate/demo.py
 	
 	How to install:
-		Copy this file in <config_dir>/custom_components/climate/melcloud.py
+		Copy this file in <config_dir>/custom_components/melcloud/climate.py
 		Edit configuration.yaml and add below lines:
 		
 			climate:
