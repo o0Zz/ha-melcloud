@@ -1,0 +1,8 @@
+{
+  "domain": "melcloud",
+  "name": "Melcloud",
+  "documentation": "https://github.com/o0Zz/ha-melcloud/",
+  "dependencies": [],
+  "codeowners": ["@o0Zz"],
+  "requirements": ["requests"]
+}
