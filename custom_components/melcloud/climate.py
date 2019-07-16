@@ -53,7 +53,7 @@
 		 0. You just DO WHAT THE FUCK YOU WANT TO.
 """
 
-import requests, sys, os, logging, time
+import requests, sys, os, logging, time, json
 
 #TODO: 
 # - Use keep alive to avoid too many reconnection
@@ -99,6 +99,19 @@ class Mode:
 	Cool = 3
 	Fan = 7
 	Auto = 8
+
+# ---------------------------------------------------------------
+
+class VentilationMode:
+	EnergyRecovery = 0
+	ByPass = 1
+	Auto = 2
+
+# ---------------------------------------------------------------
+
+class DeviceType:
+	Conditioner = 0
+	Vent = 3
 
 # ---------------------------------------------------------------
 
@@ -166,6 +179,7 @@ class MelCloudDevice:
 		
 		if req.status_code == 200:
 			self._json = req.json()
+			print(json.dumps(req.json()))
 
 			if "RoomTemperature" in self._json:
 				self._temp_list.append(self._json["RoomTemperature"])
@@ -201,17 +215,24 @@ class MelCloudDevice:
 			return False
 
 		#EffectiveFlags:
-		#Power: 		 0x01
+		#Power:		  0x01
 		#OperationMode:  0x02
-		#Temperature: 	 0x04
-		#FanSpeed: 		 0x08
+		#Temperature:	  0x04
+		#FanSpeed:		  0x08
 		#VaneVertical:   0x10
 		#VaneHorizontal: 0x100
 		#Signal melcloud we want to change everything (Even if it't not true, by this way we make sure the configuration is complete)
 		self._json["EffectiveFlags"] = 0x1F
 		self._json["HasPendingCommand"] = True
-		
-		req = requests.post("https://app.melcloud.com/Mitsubishi.Wifi.Client/Device/SetAta", headers = {'X-MitsContextKey': self._authentication.getContextKey()}, data = self._json)
+
+
+		if self._json["DeviceType"] == DeviceType.Conditioner:
+			req = requests.post("https://app.melcloud.com/Mitsubishi.Wifi.Client/Device/SetAta",
+								headers={'X-MitsContextKey': self._authentication.getContextKey()}, data=self._json)
+		elif self._json["DeviceType"] == DeviceType.Vent:
+			req = requests.post("https://app.melcloud.com/Mitsubishi.Wifi.Client/Device/SetErv",
+								headers={'X-MitsContextKey': self._authentication.getContextKey()}, data=self._json)
+
 		if req.status_code == 200:
 			_LOGGER.info("Device configuration successfully applied")
 			return True
@@ -229,12 +250,17 @@ class MelCloudDevice:
 		
 	def getFriendlyName(self):
 		return self._friendlyname
-		
+
+	def getDeviceType(self):
+		return self._json["DeviceType"]
+
 	def getTemperature(self):
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["SetTemperature"]
+		if "SetTemperature" not in self._json:
+			return None
+		else:
+			return self._json["SetTemperature"]
 
 	def getRoomTemperature(self):
 		if not self._is_info_valid():
@@ -248,33 +274,49 @@ class MelCloudDevice:
 	def getFanSpeedMax(self):
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["NumberOfFanSpeeds"]
+		if "NumberOfFanSpeeds" not in self._json:
+			return None
+		else:
+			return self._json["NumberOfFanSpeeds"]
 	
 	def getFanSpeed(self): #0 Auto, 1 to NumberOfFanSpeeds
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["SetFanSpeed"]
+		if "SetFanSpeed" not in self._json:
+			return None
+		else:
+			return self._json["SetFanSpeed"]
 	
 	def getVerticalSwingMode(self): #0 Auto, 1 to NumberOfVane, +1 Swing
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["VaneVertical"]
+		if "VaneVertical" not in self._json:
+			return None
+		else:
+			return self._json["VaneVertical"]
 		
 	def getHorizontalSwingMode(self): #0 Auto, 1 to NumberOfVane, +1 Swing
 		if not self._is_info_valid():
 			return 0
-				
-		return self._json["VaneHorizontal"]
+		if "VaneHorizontal" not in self._json:
+			return None
+		else:
+			return self._json["VaneHorizontal"]
 		
 	def getMode(self):
 		if not self._is_info_valid():
 			return Mode.Auto
 			
 		return self._json["OperationMode"] #Return class Mode
-	
+
+	def getVentMode(self):
+		if not self._is_info_valid():
+			return VentilationMode.Auto
+		if "VentilationMode" not in self._json:
+			return None
+		else:
+			return self._json["VentilationMode"]
+
 	def isPowerOn(self): #boolean
 		if not self._is_info_valid():
 			return False
@@ -326,7 +368,14 @@ class MelCloudDevice:
 			return
 			
 		self._json["OperationMode"] = mode
-	
+
+	def setVentMode(self, mode):
+		if not self._is_info_valid():
+			_LOGGER.error("Unable to set mode: " + str(mode))
+			return
+
+		self._json["VentilationMode"] = mode
+
 	def powerOn(self):
 		if not self._is_info_valid():
 			_LOGGER.error("Unable to powerOn")
@@ -398,6 +447,10 @@ OPERATION_AUTO_STR = 'Auto'
 OPERATION_OFF_STR = 'Off'
 OPERATION_DRY_STR = 'Dry'
 
+VENT_OPERATION_ENERGY_SAVING_STR = 'EnergyRecovery'
+VENT_OPERATION_BY_PASS_STR = 'ByPass'
+VENT_OPERATION_AUTO_STR = 'Auto'
+
 class MelCloudClimate(ClimateDevice):
 
 	def __init__(self, device):
@@ -439,22 +492,32 @@ class MelCloudClimate(ClimateDevice):
 	def current_operation(self):
 		if not self._device.isPowerOn():
 			return OPERATION_OFF_STR
-		elif self._device.getMode() == Mode.Heat:
-			return OPERATION_HEAT_STR
-		elif self._device.getMode() == Mode.Cool:
-			return OPERATION_COOL_STR
-		elif self._device.getMode() == Mode.Dry:
-			return OPERATION_DRY_STR
-		elif self._device.getMode() == Mode.Fan:
-			return OPERATION_FAN_STR
-		elif self._device.getMode() == Mode.Auto:
-			return OPERATION_AUTO_STR
-		
+		if self._device.getDeviceType() == DeviceType.Conditioner:
+			if self._device.getMode() == Mode.Heat:
+				return OPERATION_HEAT_STR
+			elif self._device.getMode() == Mode.Cool:
+				return OPERATION_COOL_STR
+			elif self._device.getMode() == Mode.Dry:
+				return OPERATION_DRY_STR
+			elif self._device.getMode() == Mode.Fan:
+				return OPERATION_FAN_STR
+			elif self._device.getMode() == Mode.Auto:
+				return OPERATION_AUTO_STR
+		elif self._device.getDeviceType() == DeviceType.Vent:
+			if self._device.getVentMode() == VentilationMode.EnergyRecovery:
+				return VENT_OPERATION_ENERGY_SAVING_STR
+			elif self._device.getVentMode() == VentilationMode.ByPass:
+				return VENT_OPERATION_BY_PASS_STR
+			elif self._device.getVentMode() == VentilationMode.Auto:
+				return VENT_OPERATION_AUTO_STR
 		return "" #Unknown
 
 	@property
 	def operation_list(self):
-		return [OPERATION_HEAT_STR, OPERATION_COOL_STR, OPERATION_DRY_STR, OPERATION_FAN_STR, OPERATION_AUTO_STR, OPERATION_OFF_STR]
+		if self._device.getDeviceType() == DeviceType.Conditioner:
+			return [OPERATION_HEAT_STR, OPERATION_COOL_STR, OPERATION_DRY_STR, OPERATION_FAN_STR, OPERATION_AUTO_STR, OPERATION_OFF_STR]
+		elif self._device.getDeviceType() == DeviceType.Vent:
+			return [VENT_OPERATION_ENERGY_SAVING_STR, VENT_OPERATION_BY_PASS_STR, VENT_OPERATION_AUTO_STR]
 
 	@property
 	def is_on(self):
@@ -511,7 +574,7 @@ class MelCloudClimate(ClimateDevice):
 	def set_operation_mode(self, operation_mode):
 		if operation_mode == OPERATION_OFF_STR:
 			self._device.powerOff()
-		else:
+		elif self._device.getDeviceType() == DeviceType.Conditioner:
 			self._device.powerOn()
 			if operation_mode == OPERATION_HEAT_STR:
 				self._device.setMode(Mode.Heat)
@@ -523,6 +586,14 @@ class MelCloudClimate(ClimateDevice):
 				self._device.setMode(Mode.Fan)
 			elif operation_mode == OPERATION_AUTO_STR:
 				self._device.setMode(Mode.Auto)
+		elif self._device.getDeviceType() == DeviceType.Vent:
+			self._device.powerOn()
+			if operation_mode == VENT_OPERATION_ENERGY_SAVING_STR:
+				self._device.setVentMode(VentilationMode.EnergyRecovery)
+			elif operation_mode == VENT_OPERATION_BY_PASS_STR:
+				self._device.setVentMode(VentilationMode.ByPass)
+			elif operation_mode == VENT_OPERATION_AUTO_STR:
+				self._device.setVentMode(VentilationMode.Auto)
 
 		self._device.apply()
 		self.schedule_update_ha_state()
