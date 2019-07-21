@@ -6,4 +6,4 @@ climate:
 #logger:
 #  default: debug
 #  logs:
-#    homeassistant.custom_components.melcloud.climate: debug
+#    custom_components.melcloud.climate: debug
