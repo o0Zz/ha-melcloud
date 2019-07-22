@@ -450,9 +450,9 @@ class MelCloudClimate(ClimateDevice):
             elif self._device.getMode() == Mode.Cool:
                 return HVAC_MODE_COOL
             elif self._device.getMode() == Mode.Dry:
-                return OPERATION_DRY_STR
+                return HVAC_MODE_DRY
             elif self._device.getMode() == Mode.Fan:
-                return OPERATION_FAN_STR
+                return HVAC_MODE_FAN_ONLY
             elif self._device.getMode() == Mode.Auto:
                 return HVAC_MODE_AUTO
                 
@@ -480,11 +480,11 @@ class MelCloudClimate(ClimateDevice):
             self._device.powerOn()
             if operation_mode == HVAC_MODE_HEAT:
                 self._device.setMode(Mode.Heat)
-            elif operation_mode == OPERATION_COOL_STR:
+            elif operation_mode == HVAC_MODE_COOL:
                 self._device.setMode(Mode.Cool)
-            elif operation_mode == OPERATION_DRY_STR:
+            elif operation_mode == HVAC_MODE_DRY:
                 self._device.setMode(Mode.Dry)
-            elif operation_mode == OPERATION_FAN_STR:
+            elif operation_mode == HVAC_MODE_FAN_ONLY:
                 self._device.setMode(Mode.Fan)
             elif operation_mode == HVAC_MODE_AUTO:
                 self._device.setMode(Mode.Auto)
