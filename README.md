@@ -1,5 +1,8 @@
 # HomeAssistant - MelCloud
 
+> ⚠️ **This project is no longer maintained.**
+> The Home Assistant team has integrated **MELCloud** directly into Home Assistant Core -> https://www.home-assistant.io/integrations/melcloud/
+
 Add to home assistant support for mitsubishi air conditioner (MELCloud)
 
 ## Installing
